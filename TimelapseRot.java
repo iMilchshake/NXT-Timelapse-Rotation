@@ -1,36 +1,46 @@
 package tesin;
-//import java.io.BufferedWriter;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-//import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
-//import java.io.Writer;
 
 import lejos.nxt.*;
 import lejos.util.Delay;
 import lejos.util.Stopwatch;
 import lejos.util.Timer;
 import lejos.util.TimerListener;
+
 public class TimelapseRot {
-	public static int timer_counter=0;
-	//public static boolean stop_timer=false;
+	public static int timer_counter=0; //amount of times the Motor already turned by x degree 
+	public static boolean stop_timer=false; 
 	public static Timer timer;
 	
 	public static void main(String args[])
 	{
-		Menu();
+		Button.setKeyClickVolume(0); //DISABLE SOUNDS
+		Menu(); //run main screen
 	}
+	
+	/**
+	 * This Method gets called when pressing on Start in the main Menu
+	 * @param settings needs an int[] with settings. readConfig() returns the needed Array. 
+	 */
 	public static void mainprogramm(int[] settings) {
-		System.out.println("wait is :"	+settings[1]);
-		System.out.println("amount is :"+settings[2]);
-		System.out.println("degree is :"+settings[3]);
+		stop_timer=false; //reset, if programm gets started again
+		timer_counter=0; //reset, if programm gets started again
+		boolean abort = false;
+//		System.out.println("wait is :"	+settings[1]); //debug
+//		System.out.println("amount is :"+settings[2]); //debug
+//		System.out.println("degree is :"+settings[3]); //debug
+		System.out.println("Starting Task..");
+		System.out.println("Press abort for 1 Second to stop!");
 		Delay.msDelay(1500);
 		LCD.clear();
-		
+		 
 		class tim_listener implements TimerListener
 		{
 			public void timedOut() {
@@ -42,25 +52,70 @@ public class TimelapseRot {
 		//Timer tim = new Timer(settings[1]*1000,listener); //Create Timer with listener
 		timer = new Timer(settings[1]*1000,listener);
 		timer.start();
-
 		
-		
+		//System.out.println("RUN!");
+		while(stop_timer==false)
+		{
+			//System.out.println("RUN!");
+			if(Button.readButtons()==Button.ID_ESCAPE)
+			{
+				if(abort==false)
+				{
+					abort=true;
+				}
+				else //abort is still true
+				{
+					stop_timer=true;
+					timer.stop();
+				}
+			}
+			else
+			{
+				abort=false; //reset to false if button wasnt pressed long enough
+			}
+			Delay.msDelay(1000);
+		}
+		System.out.println("Finished Task, returning to Menu..");
+		Delay.msDelay(1500);
+		Motor.A.flt();
+		LCD.clear();
+		Menu();
+		//System.out.println("RUN!");
+		//Delay.msDelay(2500);
 	}
+	/**
+	 * This Method gets called by the Timer, every x seconds
+	 * @param wait seconds to wait
+	 * @param amount amount of times to repeat
+	 * @param degree how many degrees to turn every time
+	 */
 	public static void rotate(int wait, int amount,int degree)
 	{
-		timer_counter++;
-		System.out.println("Rotation "+timer_counter);
-		Motor.A.rotate(degree, true); //rotate by degree and dont wait for rotation to finish.
-		System.out.println("Waiting for "+wait+" s");
+		if(stop_timer==true) //dont rotate if timer was deactivated, sometimes the timer sends a last input even tho it was deactivated.
+		{
+			return;
+		}
 		
-		displaySettings(0, false);
+		Motor.A.setAcceleration(500); //hardcoded atm
+		
+		timer_counter++;
+		System.out.println("R: "+timer_counter+" - " + Motor.A.getTachoCount()%360);
+		Motor.A.rotate(degree, true); //rotate by degree and dont wait for rotation to finish.
+		
+		//displaySettings(0, false);
 		
 		if(timer_counter>=amount)
 		{
 			//stop_timer=true;
 			timer.stop();
+			stop_timer=true;
+			System.out.println("STOP!");
 		}
 	}
+	/**
+	 * Writes an int[] into the Config File.
+	 * @param input the int[] its supposed to save. Can be gathered from readConfig()
+	 */
 	public static void writeConfig(int[] input)
 	{
 //		System.out.println("Writing Config..");
@@ -87,6 +142,10 @@ public class TimelapseRot {
 	      System.err.println("Failed to write to output stream");
 	    }
 	}
+	/**
+	 * Reads the Config file. 
+	 * @return The Config Array
+	 */
 	public static int[] readConfig()
 	{
 		 File data = new File("settings.txt");
@@ -106,7 +165,10 @@ public class TimelapseRot {
 		    }
 		return output;
 	}
-	
+	/**
+	 * Method that displays the Main Menu
+	 * @param selected which option is selected atm
+	 */
 	public static void displayMenu(int selected)
 	{
 		String Header = "Menu";
@@ -125,7 +187,11 @@ public class TimelapseRot {
 		LCD.drawString(exitButton, 		leftSpace,		heights[3]);
 		LCD.drawString(">", 			leftSpace-1,	heights[selected]);
 	}
-	
+	/**
+	 * The Method that displays the Settings screen
+	 * @param selected which option is selected atm
+	 * @param mode true:edit values with left/right false: select option with left/right
+	 */
 	public static void displaySettings(int selected,boolean mode)
 	{
 		String Header = 			"Settings";
@@ -155,9 +221,10 @@ public class TimelapseRot {
 		LCD.drawString(resetButton,							leftSpace,		heights[4]);
 		LCD.drawString(exitButton, 							leftSpace,		heights[5]);
 		LCD.drawString(cursor, 								leftSpace-1,	heights[selected]);
-		//LCD.drawString("selected: "+selected, 2, 7);
-		//LCD.drawString("mode: "+mode, 2, 8);
 	}
+	/**
+	 * Runs the Settings-Menu. Dont use DisplaySettings!
+	 */
 	public static void Settings()
 	{
 		boolean inSettings = true;
@@ -170,11 +237,12 @@ public class TimelapseRot {
 				
 			displaySettings(selected,changemode);
 			Stopwatch timer = new Stopwatch();
-			//int pressed = Button.waitForAnyPress();
+			
 			int pressed=Button.readButtons();
 			while(pressed==0)
 			{
 				pressed=Button.readButtons();
+				Delay.msDelay(50);
 			}
 			if (timer.elapsed()>100) //button was pressed first time
 			{
@@ -192,7 +260,6 @@ public class TimelapseRot {
 				data = readConfig();
 				data[selected]=data[selected]-1;
 				writeConfig(data);
-				//data = readConfig(); //obsolete
 				}
 				
 			} else if (pressed==Button.ID_RIGHT) {
@@ -207,7 +274,6 @@ public class TimelapseRot {
 				data = readConfig();
 				data[selected]=data[selected]+1;
 				writeConfig(data);
-				//data = readConfig(); //obsolete
 				}
 				
 			} else if (pressed==Button.ID_ESCAPE) {
@@ -243,7 +309,9 @@ public class TimelapseRot {
 		}
 	}
 	
-	
+	/**
+	 * Starts the Menu, dont use displayMenu!
+	 */
 	public static void Menu()
 	{	
 		boolean inMenu = true;
@@ -277,6 +345,10 @@ public class TimelapseRot {
 			}
 		}
 	}
+/**
+ * runs the selected Option (Main Menu)
+ * @param index the selected option.
+ */
 	public static void RunSelected(int index)
 	{
 		if(index==1)
@@ -286,7 +358,7 @@ public class TimelapseRot {
 			LCD.clear();
 			mainprogramm(tmp);
 //			System.out.println("ERROR: No Programm to Load!");
-			System.out.println("> Press Any Key to Continue");
+			System.out.println("> Press Any Key to Continue(after main)");
 			Button.waitForAnyPress();
 			
 			
@@ -297,9 +369,9 @@ public class TimelapseRot {
 			LCD.clear();
 			//System.out.println("ERROR: No Settings to Load!");
 			Settings();
-			LCD.clear(); 
-			System.out.println("> Press Any Key to Continue");
-			Button.waitForAnyPress();
+			//LCD.clear(); 
+			//System.out.println("> Press Any Key to Continue (After Menu Run)");
+			//Button.waitForAnyPress();
 			//NXT.shutDown();
 		}
 		else if(index==3)
@@ -321,7 +393,10 @@ public class TimelapseRot {
 		}	
 		
 	}
-	
+	/**
+	 * draws a line
+	 * @param y height of the line
+	 */
 	public static void drawLineX(int y)
 	{
 		for(int i = 0;i<=LCD.SCREEN_WIDTH;i++)
