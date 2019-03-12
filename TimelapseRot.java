@@ -189,9 +189,10 @@ public class TimelapseRot {
 				selected=5; } 
 				else
 				{
+				data = readConfig();
 				data[selected]=data[selected]-1;
 				writeConfig(data);
-				data = readConfig();
+				//data = readConfig(); //obsolete
 				}
 				
 			} else if (pressed==Button.ID_RIGHT) {
@@ -203,9 +204,10 @@ public class TimelapseRot {
 				else
 				{
 				//Sound.beep();
+				data = readConfig();
 				data[selected]=data[selected]+1;
 				writeConfig(data);
-				data = readConfig();
+				//data = readConfig(); //obsolete
 				}
 				
 			} else if (pressed==Button.ID_ESCAPE) {
