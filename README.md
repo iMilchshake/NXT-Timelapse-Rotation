@@ -1,4 +1,4 @@
-# NXJ-Lejos
+# NXT Timelapse Rotation (LeJos, NXJ)
 
 Programm that turns Motor.A by X Degrees every Y seconds Z times. Has a UI with Settings included.
 
